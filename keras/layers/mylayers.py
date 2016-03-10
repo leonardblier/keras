@@ -1,6 +1,8 @@
+from keras.layers.core import Layer
 from keras.layers import containers
 from keras.layers.convolutional import Convolution2D
 
+import pdb
     
 class SplitTensor(Layer):
     '''Repeat the input n times.
@@ -24,22 +26,25 @@ class SplitTensor(Layer):
     @property
     def output_shape(self):
         input_shape = self.input_shape
-        output_shape = input_shape
-        output_shape[self.axis] = output_shape / self.ratio_split
-        return output_shape
+        output_shape = list(input_shape)
+        output_shape[self.axis] = output_shape[self.axis] / self.ratio_split
+        return tuple(output_shape)
 
     def get_output(self, train=False):
         X = self.get_input(train)
         id_split = self.id_split
         ratio_split = self.ratio_split
+        div = self.input_shape[self.axis] / self.ratio_split
+        
+        axis=self.axis
         if axis == 0:
-            output =  X[id_split*ratio_split:(id_split+1)*ratio_split,:,:,:]
+            output =  X[id_split*div:(id_split+1)*div,:,:,:]
         elif axis == 1:
-            output =  X[:, id_split*ratio_split:(id_split+1)*ratio_split, :, :]
+            output =  X[:, id_split*div:(id_split+1)*div, :, :]
         elif axis == 2:
-            output = X[:,:,id_split*ratio_split:(id_split+1)*ratio_split,:]
+            output = X[:,:,id_split*div:(id_split+1)*div,:]
         elif axis == 3:
-            output == X[:,:,:,id_split*ratio_split:(id_split+1)*ratio_split]
+            output == X[:,:,:,id_split*div:(id_split+1)*div]
         else:
             raise ValueError("This axis is not possible")
         
@@ -56,15 +61,15 @@ class SplitTensor(Layer):
 
 
 
-def ConvGroup(n_group, nb_filter, nb_row, nb_col, **kwargs):
-    layer = containers.Graph()
-    layer.add_input(name='input')
 
+def Convolution2DGroup(n_group, nb_filter, nb_row, nb_col, input_shape, **kwargs):
+    layer = containers.Graph()
+    layer.add_input(name='input', input_shape=input_shape[1:])
     for i in range(n_group):
-        graph.add_node(SplitTensor(axis=2,ratio_split=n_group,id_split=i),
+        layer.add_node(SplitTensor(axis=1,ratio_split=n_group,id_split=i),
                        name='split'+str(i),
                        input='input')
-        graph.add_node(Convolution2D(nb_filter / n_group,
+        layer.add_node(Convolution2D(nb_filter / n_group,
                                      nb_row,nb_col,**kwargs),
                        name='conv'+str(i),
                        input='split'+str(i))
