@@ -2,7 +2,6 @@ from keras.layers.core import Layer
 from keras.layers import containers
 from keras.layers.convolutional import Convolution2D
 
-import pdb
     
 class SplitTensor(Layer):
     '''Repeat the input n times.
@@ -64,13 +63,15 @@ class SplitTensor(Layer):
 
 def Convolution2DGroup(n_group, nb_filter, nb_row, nb_col, input_shape, **kwargs):
     layer = containers.Graph()
+    layer.name = kwargs['name']
+    new_kwargs = dict((key, val) for key,val in kwargs.iteritems() if key != "name")
     layer.add_input(name='input', input_shape=input_shape[1:])
     for i in range(n_group):
         layer.add_node(SplitTensor(axis=1,ratio_split=n_group,id_split=i),
                        name='split'+str(i),
                        input='input')
         layer.add_node(Convolution2D(nb_filter / n_group,
-                                     nb_row,nb_col,**kwargs),
+                                     nb_row,nb_col,**new_kwargs),
                        name='conv'+str(i),
                        input='split'+str(i))
 
