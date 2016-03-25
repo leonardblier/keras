@@ -1,7 +1,44 @@
 from keras.layers.core import Layer
 from keras.layers import containers
 from keras.layers.convolutional import Convolution2D
+from keras import backend as K
 
+
+
+class CrossChannelNormalization(Layer):
+    def __init__(self, alpha = 1e-4, k=2, beta=0.75, n=5, **kwargs):
+        self.alpha=alpha
+        self.k = k
+        self.beta = beta
+        self.n = n
+
+        super(CrossChannelNormalization, self).__init__(**kwargs)
+
+
+    @property
+    def output_shape(self):
+        input_shape = self.input_shape
+        return input_shape
+
+    def get_output(self, train=False):
+        X = self.get_input(train)
+        b, ch, r, c = X.shape #self.input_shape
+        #pdb.set_trace()
+        half = self.n // 2
+        square = K.square(X)
+
+        extra_channels = K.spatial_2d_padding(K.permute_dimensions(square, (0,2,3,1))
+                                              , (0,half))
+        extra_channels = K.permute_dimensions(extra_channels, (0,3,1,2))
+        # extra_channels = K.zeros((b, ch+2*half, r, c))
+        # extra_channels[:,half:half+ch,:,:] = square
+        
+        scale = self.k
+        for i in xrange(self.n):
+            scale += self.alpha * extra_channels[:,i:i+ch,:,:]
+        scale = scale ** self.beta
+
+        return X / scale
     
 class SplitTensor(Layer):
     '''Repeat the input n times.
